@@ -11,6 +11,8 @@ repositories {
 }
 
 dependencies {
+    implementation("commons-io:commons-io:2.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.8.10")
 }
 
