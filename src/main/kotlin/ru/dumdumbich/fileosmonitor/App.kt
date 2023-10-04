@@ -1,3 +1,5 @@
+package ru.dumdumbich.fileosmonitor
+
 fun main(args: Array<String>) {
     println("Hello World!")
 
