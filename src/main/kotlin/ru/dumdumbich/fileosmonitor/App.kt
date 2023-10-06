@@ -1,37 +1,38 @@
 package ru.dumdumbich.fileosmonitor
 
 
-import kotlinx.coroutines.*
-import org.apache.commons.io.monitor.FileAlterationObserver
-import ru.dumdumbich.fileosmonitor.data.FileListener
-import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.nio.file.*
 
 
 suspend fun main() {
+    val targetPath = "/home/master/app/file-os-monitor/temp/"
+    val path = Paths.get(targetPath)
 
-    val interval = 1000L
-    val path = "/home/master/app/file-os-monitor/temp/"
-    val listener = FileListener()
-    val observer = FileAlterationObserver(File(path))
-    observer.addListener(listener)
+    val watchService: WatchService = withContext(Dispatchers.IO) {
+        FileSystems.getDefault().newWatchService()
+    }
+    val watchKey = withContext(Dispatchers.IO) {
+        path.register(
+            watchService,
+            StandardWatchEventKinds.ENTRY_CREATE,
+            StandardWatchEventKinds.ENTRY_MODIFY,
+            StandardWatchEventKinds.ENTRY_DELETE
+        )
+    }
 
-    val coroutineScope = CoroutineScope(Dispatchers.Default)
-    coroutineScope.launch {
-        while (coroutineScope.isActive) {
-            observer.checkAndNotify()
-            delay(interval)
+    do {
+        delay(1000L)
+        val key = watchService.poll()
+        if (key != null && key == watchKey) {
+            val events = key.pollEvents()
+            for (event in events) {
+                println("Event kind:" + event.kind() + ". File affected: " + event.context() + ".")
+            }
         }
-    }.join()
+        val isKeyValid = watchKey.reset()
+    } while (isKeyValid)
 
 }
-
-
-/*
-fun main(args: Array<String>) {
-    println("Hello World!")
-
-    // Try adding program arguments via Run/Debug configuration.
-    // Learn more about running applications: https://www.jetbrains.com/help/idea/running-applications.html.
-    println("Program arguments: ${args.joinToString()}")
-}
-*/
