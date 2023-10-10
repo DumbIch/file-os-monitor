@@ -1,4 +1,4 @@
-package ru.dumdumbich.fileosmonitor.debug
+package ru.dumdumbich.fileosmonitor.data
 
 /**
  * <h3>file-os-monitor</h3>
@@ -44,30 +44,31 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 
-interface DebugMessage {
+interface Logger {
 
     companion object {
-        const val DEBUG_Server: Boolean = true
+        const val SHOW_MESSAGE: Boolean = true
+        const val WRITE_MESSAGE: Boolean = true
         private const val ENTRY_PART_EMPTY = ""
-        private const val ENTRY_PART_UNIQUE = "@@@"
-        private const val LOG_DIRECTORY_ROOT = "/home/dumdumbich/develop/log/"
-        private const val ENTRIES_MAX_NUMBER = 10L
-        private const val ENTRIES_MAX_LENGTH = 80L
+        private const val ENTRY_PART_UNIQUE = ""
+        private const val ENTRIES_MAX_NUMBER = 100L
+        private const val ENTRIES_MAX_LENGTH = 100L
         private const val LOG_FILE_SIZE_MAX = ENTRIES_MAX_NUMBER * ENTRIES_MAX_LENGTH
-        private const val LOF_FILE_BACKUP_NUMBER_MAX = 5
+        private const val LOF_FILE_BACKUP_NUMBER_MAX = 10
     }
 
-    private val appPackageName: String
-        get() = this.javaClass.canonicalName.substringBefore(".")
 
-    private val logDirectoryPath: String
-        get() = "$LOG_DIRECTORY_ROOT$appPackageName"
+    private val appPackageName: String
+        get() = this.javaClass.simpleName
+        // get() = this.javaClass.canonicalName // this.javaClass.canonicalName.substringBefore(".")
+
+    var logDirectoryPath: String
 
     private val logFilePath: String
         get() = "$logDirectoryPath/$appPackageName.log"
 
     private val backupFilePath: String
-        get() = "$logDirectoryPath/$appPackageName"
+         get() = "$logDirectoryPath/$appPackageName"
 
     private val logFileSize: Long
         get() = getLogFileSize(stringToPath(logFilePath))
@@ -82,12 +83,12 @@ interface DebugMessage {
         get() = Thread.currentThread().name
 
 
-    fun consoleMsg(message: String, isDebugMode: Boolean = true) {
-        if (isDebugMode) println("$ENTRY_PART_UNIQUE ${timestamp()} [$currentThread] $className[$classHash]: $message")
+    fun consoleMsg(message: String, isShowMessage: Boolean = SHOW_MESSAGE) {
+        if (isShowMessage) println("$ENTRY_PART_UNIQUE ${timestamp()} [$currentThread] $className[$classHash]: $message")
     }
 
-    fun fileMsg(message: String, isDebugMode: Boolean = true) {
-        if (isDebugMode) {
+    fun fileMsg(message: String, isWriteMessage: Boolean = WRITE_MESSAGE) {
+        if (isWriteMessage) {
             val directory: Path = stringToPath(logDirectoryPath)
             val file: Path = stringToPath(logFilePath)
             if (isPathNotExists(directory)) createDirectory(directory)
@@ -99,7 +100,7 @@ interface DebugMessage {
                 }
             } else {
                 addTextToFile(
-                    "$ENTRY_PART_UNIQUE : ${timestamp()} : $classHash : $className : $message \n", file
+                    "$ENTRY_PART_UNIQUE${timestamp()} : $classHash : $className : $message \n", file
                 )
             }
         }

@@ -1,38 +1,49 @@
 package ru.dumdumbich.fileosmonitor
 
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import ru.dumdumbich.fileosmonitor.data.Tracker
+import ru.dumdumbich.fileosmonitor.data.Tuner
+import ru.dumdumbich.fileosmonitor.domain.Event
+import ru.dumdumbich.fileosmonitor.domain.Events
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import java.nio.file.*
 
+fun main(args: Array<String>) {
 
-suspend fun main() {
-    val targetPath = "/home/master/app/file-os-monitor/temp/"
-    val path = Paths.get(targetPath)
+    val tuner = Tuner(args)
+    val logDirectory = tuner.loggerPathString
+    val trackerBaseDirectory = tuner.trackingPathString
+//    val a3TrackerDirectory = "$trackerBaseDirectory/a3"
+    val tracker = Tracker(trackerBaseDirectory, logDirectory)
 
-    val watchService: WatchService = withContext(Dispatchers.IO) {
-        FileSystems.getDefault().newWatchService()
-    }
-    val watchKey = withContext(Dispatchers.IO) {
-        path.register(
-            watchService,
-            StandardWatchEventKinds.ENTRY_CREATE,
-            StandardWatchEventKinds.ENTRY_MODIFY,
-            StandardWatchEventKinds.ENTRY_DELETE
-        )
-    }
+    val coroutineScope = CoroutineScope(Dispatchers.IO)
+    val eventsFlow = MutableSharedFlow<Event>()
 
-    do {
-        delay(1000L)
-        val key = watchService.poll()
-        if (key != null && key == watchKey) {
-            val events = key.pollEvents()
-            for (event in events) {
-                println("Event kind:" + event.kind() + ". File affected: " + event.context() + ".")
-            }
+    eventsFlow.onEach { event ->
+        event.action()
+        if (event.type == Events.FAIL) {
+            coroutineScope.cancel("Application terminated")
         }
-        val isKeyValid = watchKey.reset()
-    } while (isKeyValid)
+    }.launchIn(coroutineScope)
+
+    coroutineScope.launch {
+        do {
+            delay(500L)
+            val event = tracker.getEvent()
+            eventsFlow.emit(event)
+        } while (isActive)
+    }
+
+    coroutineScope.launch {
+        do {
+            delay(500L)
+            tracker.updateEvents()
+        } while (isActive)
+    }
+
+    while (coroutineScope.isActive) {
+    }
 
 }
